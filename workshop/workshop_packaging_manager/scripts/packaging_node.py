@@ -75,8 +75,7 @@ class PackagingNode(Node) :
     def run_loop(self):
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.1)
-            # TODO: Implement the run loop
-            pass
+            self.conveyor.set_running(self._last_object_detected)
 
     def _load_poses(self) -> dict:
         """Load poses from poses.yaml file"""
@@ -106,8 +105,11 @@ class ConveyorController:
         self._speed = speed
         self._current_state = None
 
-        if not self._client.wait_for_service(timeout_sec=5.0):
-            self._node.get_logger().error(f"Service {service_name} not available !")
+        for i in range(5):
+            if not self._client.wait_for_service(timeout_sec=5.0):
+                self._node.get_logger().error(f"Service {service_name} not available !")
+            else:
+                break
 
     def set_running(self, run: bool) -> None:
         req = ControlConveyor.Request()
