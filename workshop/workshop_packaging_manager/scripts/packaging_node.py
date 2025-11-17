@@ -49,7 +49,7 @@ class PackagingNode(Node) :
         
         # Load poses from YAML file
         self.poses = self._load_poses()
-
+        self.arm_moving = False
         # Initialize MoveIt2
         try:
             self.pick_place = PickAndPlaceExecutorMoveIt2(self, "arm")
@@ -57,6 +57,7 @@ class PackagingNode(Node) :
             self.get_logger().error(f"Failed to initialize MoveIt2: {e}")
             self.pick_place = None
         self.pick_place._open_gripper()
+        self._go_to_pregrasp()
         # --- State ---
         self._last_object_detected = None
 
@@ -81,10 +82,10 @@ class PackagingNode(Node) :
             rclpy.spin_once(self, timeout_sec=0.1)
             if not self._last_object_detected and not self.conveyor._current_state:
                 self.conveyor.set_running(True)
-                self.pick_place._open_gripper()
             elif self._last_object_detected and self.conveyor._current_state:
                 self.conveyor.set_running(False)
-                self.pick_place._close_gripper()
+                self._execute_pick_sequence()
+                self.conveyor.set_running(True)
             else:
                 pass
 
@@ -109,6 +110,54 @@ class PackagingNode(Node) :
             return {
                 'home': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
             }
+        
+    def _go_to_pregrasp(self):
+        try:
+            pre_grasp_pose = self.poses.get('pregrasp')
+            success = self.pick_place.use_single_pipeline_planning(pre_grasp_pose, "ompl_rrtc")
+            if not success:
+                self.get_logger().error("Failed to reach grip position")
+                return False
+            return True
+        except Exception as e:
+            self.get_logger().error(f"Error in go to pre grasp: {e}")
+            return False
+        
+
+    def _execute_pick_sequence(self):
+        try:
+            grasp_pose = self.poses.get('grasp')
+            success = self.pick_place.use_single_pipeline_planning(grasp_pose, "ompl_rrtc")
+            if not success:
+                self.get_logger().error("Failed to reach grip position")
+                return False
+
+            gripper_success = self.pick_place._close_gripper()
+            if not gripper_success:
+                self.get_logger().error("Failed to close gripper")
+                return False
+
+            drop_pose = self.poses.get('drop')
+            success2 = self.pick_place.use_single_pipeline_planning(drop_pose, "ompl_rrtc")
+            if not success2:
+                self.get_logger().error("Failed to reach home position")
+                return False
+
+            gripper_success2 = self.pick_place._open_gripper()
+            if not gripper_success2:
+                self.get_logger().error("Failed to open gripper")
+                return False
+
+            pre_grasp_pose = self.poses.get('pregrasp')
+            success3 = self.pick_place.use_single_pipeline_planning(pre_grasp_pose, "ompl_rrtc")
+            if not success3:
+                self.get_logger().error("Failed to reach grip position")
+                return False
+                            
+            return True           
+        except Exception as e:
+            self.get_logger().error(f"Error in pick sequence: {e}")
+            return False  
 
 class ConveyorController:
 
@@ -326,9 +375,11 @@ class PickAndPlaceExecutorMoveIt2:
 
     def _close_gripper(self):
         self._tool_cmd(ToolCommand.CLOSE_GRIPPER)
+        return True
     
     def _open_gripper(self):
         self._tool_cmd(ToolCommand.OPEN_GRIPPER)
+        return True
 
     def add_collision_object(self, object_id: str, object_type: str = "box", 
                            position: tuple = (0.0, 0.0, 0.0), 
