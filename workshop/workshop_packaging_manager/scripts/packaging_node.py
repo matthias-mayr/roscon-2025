@@ -45,6 +45,7 @@ class PackagingNode(Node) :
 
         # --- Helpers ---
         self.conveyor = ConveyorController(self, self.conveyor_service, self.conveyor_id, self.speed)
+        self.conveyor.set_running(False)
         
         # Load poses from YAML file
         self.poses = self._load_poses()
@@ -73,9 +74,18 @@ class PackagingNode(Node) :
         self._last_object_detected = not msg._digital_inputs[-1].value
 
     def run_loop(self):
+        # Start loop
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.1)
-            self.conveyor.set_running(self._last_object_detected)
+            if not self._last_object_detected and not self.conveyor._current_state:
+                self.conveyor.set_running(True)
+            elif self._last_object_detected and self.conveyor._current_state:
+                self.conveyor.set_running(False)
+            else:
+                pass
+
+        # End loop stop conveyor
+        self.conveyor.set_running(False)
 
     def _load_poses(self) -> dict:
         """Load poses from poses.yaml file"""
