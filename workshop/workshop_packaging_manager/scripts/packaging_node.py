@@ -71,7 +71,9 @@ class PackagingNode(Node) :
         self.get_logger().info("packaging_node started: monitoring sensor, controlling conveyor and robot")
 
     def _on_digital_state(self, msg: DigitalIOState) -> None:
-        self._last_object_detected = not msg._digital_inputs[-1].value
+        self._last_object_detected = not msg._digital_inputs[self.sensor_index].value
+        print("Digital inputs message : ",msg._digital_inputs)
+        print("Object detected : ", self._last_object_detected)
 
     def run_loop(self):
         # Start loop
