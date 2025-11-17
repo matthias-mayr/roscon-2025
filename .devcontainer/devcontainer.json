@@ -20,6 +20,8 @@
       "--net=host",
       "-e", "DISPLAY=${localEnv:DISPLAY}",
       "-v", "/tmp/.X11-unix:/tmp/.X11-unix:rw",
+    //   "-v", "/etc/localtime:/etc/localtime:ro",
+    //   "-v", "/etc/timezone:/etc/timezone:ro",
       "--device", "/dev/dri"
     ],
     "customizations": {

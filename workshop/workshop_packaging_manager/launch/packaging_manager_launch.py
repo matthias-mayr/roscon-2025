@@ -11,6 +11,9 @@ from rclpy import logging
 
 logger = logging.get_logger("packaging_manager.launch")
 
+PACKAGE_NAME = "workshop_packaging_manager"
+PACKAGE_PATH = get_package_share_directory(PACKAGE_NAME)
+
 def generate_launch_description():
     # Arguments:
     conveyor_id_arg = DeclareLaunchArgument(
@@ -34,6 +37,7 @@ def generate_launch_description():
         description="RViz configuration file",
     )
 
+    
     urdf_file = os.path.join(
         get_package_share_directory("niryo_ned_description"),
         "urdf/ned3pro",
@@ -42,25 +46,24 @@ def generate_launch_description():
 
     # Build MoveIt2 configuration
     moveit_config = (
-        MoveItConfigsBuilder("niryo_ned3pro", package_name="workshop_packaging_manager")
+        MoveItConfigsBuilder("niryo_ned3pro", package_name=PACKAGE_NAME)
         .robot_description(file_path=urdf_file)
-        .joint_limits(file_path="config/joint_limits.yaml")
-        .robot_description_semantic(file_path="config/niryo_ned3pro.srdf")
-        .robot_description_kinematics(file_path="config/kinematics.yaml")
-        .trajectory_execution(file_path="config/moveit_controllers.yaml")
-        .moveit_cpp(
-            file_path=os.path.join(
-                get_package_share_directory("workshop_packaging_manager"),
-                "config",
-                "moveit_py_config.yaml"
-            )
-        )
+        .joint_limits(file_path=os.path.join(PACKAGE_PATH,
+                "config", "joint_limits.yaml"))
+        .robot_description_semantic(file_path=os.path.join(PACKAGE_PATH,
+                "config", "niryo_ned3pro.srdf"))
+        .robot_description_kinematics(file_path=os.path.join(PACKAGE_PATH,
+                "config", "kinematics.yaml"))
+        .trajectory_execution(file_path=os.path.join(PACKAGE_PATH,
+                "config", "moveit_controllers.yaml"))
+        .moveit_cpp(file_path=os.path.join(PACKAGE_PATH,
+                "config", "moveit_py_config.yaml"))
         .to_moveit_configs()
     )
 
     packaging_node = Node(
         name="packaging_node",
-        package="workshop_packaging_manager",
+        package=PACKAGE_NAME,
         executable="packaging_node.py",
         output="both",
         parameters=[
@@ -106,6 +109,6 @@ def generate_launch_description():
         speed_arg,
         sensor_index_arg,
         static_tf,
-        rviz_node,
+        # rviz_node,
         packaging_node,
     ])
