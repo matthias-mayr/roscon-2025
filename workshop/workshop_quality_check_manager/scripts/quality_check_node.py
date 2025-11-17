@@ -18,6 +18,8 @@ class QualityCheckNode(Node):
     def __init__(self):
         super().__init__("quality_check_node")
 
+        self._run_belt : bool = False
+
         # --- Parameters ---
         self.conveyor_id = self.declare_parameter("conveyor_id", 9).get_parameter_value().integer_value
         self.speed = self.declare_parameter("speed", 60).get_parameter_value().integer_value
@@ -58,9 +60,9 @@ class QualityCheckNode(Node):
 
         # --- Subscription ---
         qos = QoSProfile(
-            reliability=ReliabilityPolicy.RELIABLE,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
             history=HistoryPolicy.KEEP_LAST,
-            depth=10,
+            depth=1,
         )
         self.create_subscription(DigitalIOState, self.digital_state_topic, self._on_digital_state, qos)
         self.create_subscription(String, "/safety_state", self._on_safety_state, 10)
@@ -68,18 +70,17 @@ class QualityCheckNode(Node):
         self.get_logger().info("quality_check_node_sync started")
 
     def _on_digital_state(self, msg: DigitalIOState) -> None:
-        # TODO: Implement the digital state method
-        pass
+        self._run_belt = msg.digital_inputs[-1].value
 
     def _on_safety_state(self, msg: String) -> None:
         # TODO: Implement the safety state method
         pass
 
     def run_loop(self):
+        self.conveyor.set_running(True)
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.1)
-            # TODO: Implement the run loop
-            pass
+            self.conveyor.set_running(self._run_belt)
 
 
 class PickAndPlaceExecutor:
@@ -119,8 +120,14 @@ class ConveyorController:
             self._node.get_logger().error(f"Service {service_name} not available !")
 
     def set_running(self, run: bool) -> None:
-        # TODO: Implement the set running method
-        pass
+        # print(f'Conveyor running {run}')
+        req = ControlConveyor.Request()
+        req.id = self._conveyor_id
+        req.control_on = True
+        req.speed = self._speed
+        req.direction = (1 if run else 0)
+        future = self._client.call_async(req)
+        rclpy.spin_until_future_complete(self._node, future)
 
 
 
