@@ -56,6 +56,7 @@ class PackagingNode(Node) :
         except Exception as e:
             self.get_logger().error(f"Failed to initialize MoveIt2: {e}")
             self.pick_place = None
+            raise Exception("MoveIt2 initialization failed")
 
         self.pick_place._open_gripper()
         self._go_to_pregrasp()
