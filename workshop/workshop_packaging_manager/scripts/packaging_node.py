@@ -159,6 +159,7 @@ class PackagingNode(Node) :
             self.get_logger().error(f"Error in pick sequence: {e}")
             return False  
 
+
 class ConveyorController:
 
     def __init__(self, node: Node, service_name: str, conveyor_id: int, speed: int) -> None:
