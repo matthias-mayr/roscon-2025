@@ -87,19 +87,26 @@ class QualityCheckNode(Node):
         self.pick_place._tool_cmd(open=True)  # Close gripper to pick object
         self.pick_place._move(self.pick_place._poses["quality_check_approach"])
 
-    def _move_after_quality_check(self):
+    def _move_after_quality_check(self, part_safe: bool = True):
         self.pick_place._move(self.pick_place._poses["quality_check"])
         self.pick_place._tool_cmd(open=False)  # Close gripper to pick object
         self.pick_place._move(self.pick_place._poses["quality_check_approach"])
-        self.pick_place._move(self.pick_place._poses["place_next_conveyor_approach"])
-        self.pick_place._move(self.pick_place._poses["place_next_conveyor"])
-        self.pick_place._tool_cmd(open=True)  # Open gripper to release object
-        self.pick_place._move(self.pick_place._poses["place_next_conveyor_approach"])
-
+        if part_safe:
+            self.pick_place._move(self.pick_place._poses["place_next_conveyor_approach"])
+            self.pick_place._move(self.pick_place._poses["place_next_conveyor"])
+            self.pick_place._tool_cmd(open=True)  # Open gripper to release object
+            self.pick_place._move(self.pick_place._poses["place_next_conveyor_approach"])
+        else:
+            self.pick_place._move(self.pick_place._poses["unsafe_position_approach"])
+            self.pick_place._move(self.pick_place._poses["unsafe_position"])
+            self.pick_place._tool_cmd(open=True)  # Open gripper to release object
+            self.pick_place._move(self.pick_place._poses["unsafe_position_approach"])
+        self.pick_place._move(self.pick_place._poses["home"])
 
     def run_loop(self):
         self.conveyor.set_running(True)
         self.pick_place._tool_cmd(open=True)  # Open gripper at start
+        self.pick_place._move(self.pick_place._poses["home"])
 
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.1)
@@ -109,7 +116,7 @@ class QualityCheckNode(Node):
                 self.conveyor.set_running(False)
                 self._bring_to_quality_check()
                 time.sleep(5)
-                self._move_after_quality_check()
+                self._move_after_quality_check(part_safe=False)
 
 
 
