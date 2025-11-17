@@ -9,7 +9,7 @@ from rclpy.logging import get_logger
 from rclpy.action import ActionClient
 
 from niryo_ned_ros2_interfaces.srv import ControlConveyor
-from niryo_ned_ros2_interfaces.msg import DigitalIOState
+from niryo_ned_ros2_interfaces.msg import DigitalIOState, ToolCommand
 from niryo_ned_ros2_interfaces.action import Tool
 from geometry_msgs.msg import PoseStamped, Pose
 from moveit_msgs.msg import CollisionObject
@@ -56,7 +56,7 @@ class PackagingNode(Node) :
         except Exception as e:
             self.get_logger().error(f"Failed to initialize MoveIt2: {e}")
             self.pick_place = None
-
+        self.pick_place._open_gripper()
         # --- State ---
         self._last_object_detected = None
 
@@ -79,8 +79,10 @@ class PackagingNode(Node) :
             rclpy.spin_once(self, timeout_sec=0.1)
             if not self._last_object_detected and not self.conveyor._current_state:
                 self.conveyor.set_running(True)
+                self.pick_place._open_gripper()
             elif self._last_object_detected and self.conveyor._current_state:
                 self.conveyor.set_running(False)
+                self.pick_place._close_gripper()
             else:
                 pass
 
@@ -305,10 +307,26 @@ class PickAndPlaceExecutorMoveIt2:
             self._logger.error(f"Error in multi-pipeline planning: {e}")
             return False
 
-    def _tool_cmd(self, cmd_type: int, activate: bool):
-        # TODO: Implement the tool command method
-        pass
+    def _tool_cmd(self, cmd_type: int):
+        goal = Tool.Goal()
+        goal._cmd.cmd_type = cmd_type
+        goal._cmd.tool_id = self._tool_cfg["id"]
+        goal._cmd.max_torque_percentage = self._tool_cfg["max"]
+        goal._cmd.hold_torque_percentage = self._tool_cfg["hold"]
+        send_future = self._tool.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self._node, send_future)
+        goal_handle = send_future.result()
+        if not goal_handle.accepted:
+            self._node.get_logger().error("command rejected")
+            return
+        result_future = goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self._node, result_future)
 
+    def _close_gripper(self):
+        self._tool_cmd(ToolCommand.CLOSE_GRIPPER)
+    
+    def _open_gripper(self):
+        self._tool_cmd(ToolCommand.OPEN_GRIPPER)
 
     def add_collision_object(self, object_id: str, object_type: str = "box", 
                            position: tuple = (0.0, 0.0, 0.0), 
