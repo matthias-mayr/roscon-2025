@@ -18,7 +18,7 @@ class QualityCheckNode(Node):
     def __init__(self):
         super().__init__("quality_check_node")
 
-        self._run_belt : bool = False
+        self._object_detected : bool = False
 
         # --- Parameters ---
         self.conveyor_id = self.declare_parameter("conveyor_id", 9).get_parameter_value().integer_value
@@ -70,7 +70,7 @@ class QualityCheckNode(Node):
         self.get_logger().info("quality_check_node_sync started")
 
     def _on_digital_state(self, msg: DigitalIOState) -> None:
-        self._run_belt = msg.digital_inputs[-1].value
+        self._object_detected = not msg.digital_inputs[-1].value
 
     def _on_safety_state(self, msg: String) -> None:
         # TODO: Implement the safety state method
@@ -80,7 +80,7 @@ class QualityCheckNode(Node):
         self.conveyor.set_running(True)
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.1)
-            self.conveyor.set_running(self._run_belt)
+            self.conveyor.set_running(not self._object_detected)
 
 
 class PickAndPlaceExecutor:
@@ -130,12 +130,16 @@ class ConveyorController:
         self._conveyor_id = conveyor_id
         self._speed = speed
         self._current_state = None
+        self.last_command = None
 
         if not self._client.wait_for_service(timeout_sec=5.0):
             self._node.get_logger().error(f"Service {service_name} not available !")
 
     def set_running(self, run: bool) -> None:
         # print(f'Conveyor running {run}')
+        if self.last_command != run:
+            self._node.get_logger().info(f'Setting conveyor running: {run} from {self.last_command}')
+            self.last_command = run
         req = ControlConveyor.Request()
         req.id = self._conveyor_id
         req.control_on = True
