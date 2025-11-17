@@ -7,7 +7,7 @@ from std_msgs.msg import String
 from rclpy.action import ActionClient
 
 from niryo_ned_ros2_interfaces.srv import ControlConveyor
-from niryo_ned_ros2_interfaces.msg import DigitalIOState
+from niryo_ned_ros2_interfaces.msg import ArmMoveCommand, DigitalIOState, ToolCommand
 from niryo_ned_ros2_interfaces.action import RobotMove, Tool
 
 import yaml
@@ -99,12 +99,27 @@ class PickAndPlaceExecutor:
 
 
     def _move(self, joints):
-        # TODO: Implement the move method
-        pass
 
-    def _tool_cmd(self, cmd_type: int, activate: bool):
-        # TODO: Implement the tool command method
-        pass
+    def _tool_cmd(self, activate: bool):
+        tool_goal = Tool.Goal()
+        tool_cmd = ToolCommand()
+        tool_cmd.tool_id = self._tool_cfg["id"]
+        tool_cmd.max_torque_percentage = self._tool_cfg["max"]
+        tool_cmd.hold_torque_percentage = self._tool_cfg["hold"]
+        tool_cmd.cmd_type = ToolCommand.OPEN_GRIPPER if activate else ToolCommand.CLOSE_GRIPPER
+        tool_goal.cmd = tool_cmd
+        return self._send_goal_async(self._tool, tool_goal)
+
+    def _send_goal_async(self, action_client: ActionClient, goal) -> None:
+        send_future = action_client.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self._node, send_future)
+        goal_handle = send_future.result()
+        if not goal_handle.accepted:
+            self._node.get_logger().error("command rejected")
+            return
+        result_future = goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self._node, result_future)
+        return result_future.result().result
 
 
 class ConveyorController:
