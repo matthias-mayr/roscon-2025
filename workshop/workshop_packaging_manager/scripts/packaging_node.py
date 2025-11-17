@@ -112,12 +112,12 @@ class ConveyorController:
     def set_running(self, run: bool) -> None:
         req = ControlConveyor.Request()
         req.id = self._conveyor_id
-        req.control_on = True
+        req.control_on = run
         req.direction = 1
         req.speed = self._speed
         future = self._client.call_async(req)
         rclpy.spin_until_future_complete(self._node, future)
-        pass
+        self._current_state = run
 
 
 class PickAndPlaceExecutorMoveIt2:
