@@ -99,6 +99,12 @@ class PickAndPlaceExecutor:
 
 
     def _move(self, joints):
+        goal = RobotMove.Goal()
+        goal_cmd = ArmMoveCommand()
+        goal_cmd.joints = joints
+        goal_cmd.cmd_type = ArmMoveCommand.JOINTS
+        goal.cmd = goal_cmd
+        return self._send_goal_async(self._robot, goal)
 
     def _tool_cmd(self, activate: bool):
         tool_goal = Tool.Goal()
