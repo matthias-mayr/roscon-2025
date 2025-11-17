@@ -202,16 +202,16 @@ class PickAndPlaceExecutorMoveIt2:
             self._logger.error("tool server /niryo_robot_tools_commander/action_server not available !")
         
         # Initialize MoveIt2 Python API (parameters will be passed via launch file)
-        try:
-            self._moveit = MoveItPy(node_name="moveit_py_packaging")
-            self._arm = self._moveit.get_planning_component(group_name)
-            self._planning_scene_monitor = self._moveit.get_planning_scene_monitor()
+        # try:
+        #     self._moveit = MoveItPy(node_name="moveit_py_packaging")
+        #     self._arm = self._moveit.get_planning_component(group_name)
+        #     self._planning_scene_monitor = self._moveit.get_planning_scene_monitor()
             
-            self._logger.info("MoveItPy instance created for packaging")
+        #     self._logger.info("MoveItPy instance created for packaging")
             
-        except Exception as e:
-            self._logger.error(f"Failed to initialize MoveIt2: {e}")
-            raise
+        # except Exception as e:
+        #     self._logger.error(f"Failed to initialize MoveIt2: {e}")
+        #     raise
 
     def plan_and_execute(
         self,
@@ -364,7 +364,7 @@ class PickAndPlaceExecutorMoveIt2:
         goal._cmd.tool_id = self._tool_cfg["id"]
         goal._cmd.max_torque_percentage = self._tool_cfg["max"]
         goal._cmd.hold_torque_percentage = self._tool_cfg["hold"]
-        send_future = self._tool.send_goal_async(goal)
+        send_future = self._tool_action.send_goal_async(goal)
         rclpy.spin_until_future_complete(self._node, send_future)
         goal_handle = send_future.result()
         if not goal_handle.accepted:
