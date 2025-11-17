@@ -70,8 +70,7 @@ class PackagingNode(Node) :
         self.get_logger().info("packaging_node started: monitoring sensor, controlling conveyor and robot")
 
     def _on_digital_state(self, msg: DigitalIOState) -> None:
-        self._last_object_detected = not msg._digital_inputs[4]
-        print("digital input callback, object detected : ", self._last_object_detected)
+        self._last_object_detected = not msg._digital_inputs[-1].value
 
     def run_loop(self):
         while rclpy.ok():
@@ -112,6 +111,7 @@ class ConveyorController:
 
     def set_running(self, run: bool) -> None:
         # TODO: Implement the set running method
+        print("Activate conveyor:", run)
         pass
 
 
