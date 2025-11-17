@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import time
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
@@ -76,11 +77,40 @@ class QualityCheckNode(Node):
         # TODO: Implement the safety state method
         pass
 
+    def _bring_to_quality_check(self):
+        self.pick_place._move(self.pick_place._poses["pick_conveyor_approach"])
+        self.pick_place._move(self.pick_place._poses["pick_conveyor"])
+        self.pick_place._tool_cmd(open=False)  # Close gripper to pick object
+        self.pick_place._move(self.pick_place._poses["pick_conveyor_approach"])
+        self.pick_place._move(self.pick_place._poses["quality_check_approach"])
+        self.pick_place._move(self.pick_place._poses["quality_check"])
+        self.pick_place._tool_cmd(open=True)  # Close gripper to pick object
+        self.pick_place._move(self.pick_place._poses["quality_check_approach"])
+
+    def _move_after_quality_check(self):
+        self.pick_place._move(self.pick_place._poses["quality_check"])
+        self.pick_place._tool_cmd(open=False)  # Close gripper to pick object
+        self.pick_place._move(self.pick_place._poses["quality_check_approach"])
+        self.pick_place._move(self.pick_place._poses["place_next_conveyor_approach"])
+        self.pick_place._move(self.pick_place._poses["place_next_conveyor"])
+        self.pick_place._tool_cmd(open=True)  # Open gripper to release object
+        self.pick_place._move(self.pick_place._poses["place_next_conveyor_approach"])
+
+
     def run_loop(self):
         self.conveyor.set_running(True)
+        self.pick_place._tool_cmd(open=True)  # Open gripper at start
+
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.1)
             self.conveyor.set_running(not self._object_detected)
+            if self._object_detected:
+                self.get_logger().info("Object detected, stopping conveyor and picking object")
+                self.conveyor.set_running(False)
+                self._bring_to_quality_check()
+                time.sleep(5)
+                self._move_after_quality_check()
+
 
 
 class PickAndPlaceExecutor:
@@ -106,13 +136,13 @@ class PickAndPlaceExecutor:
         goal.cmd = goal_cmd
         return self._send_goal_async(self._robot, goal)
 
-    def _tool_cmd(self, activate: bool):
+    def _tool_cmd(self, open: bool):
         tool_goal = Tool.Goal()
         tool_cmd = ToolCommand()
         tool_cmd.tool_id = self._tool_cfg["id"]
         tool_cmd.max_torque_percentage = self._tool_cfg["max"]
         tool_cmd.hold_torque_percentage = self._tool_cfg["hold"]
-        tool_cmd.cmd_type = ToolCommand.OPEN_GRIPPER if activate else ToolCommand.CLOSE_GRIPPER
+        tool_cmd.cmd_type = ToolCommand.OPEN_GRIPPER if open else ToolCommand.CLOSE_GRIPPER
         tool_goal.cmd = tool_cmd
         return self._send_goal_async(self._tool, tool_goal)
 
