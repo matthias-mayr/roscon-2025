@@ -56,6 +56,7 @@ class PackagingNode(Node) :
         except Exception as e:
             self.get_logger().error(f"Failed to initialize MoveIt2: {e}")
             self.pick_place = None
+
         self.pick_place._open_gripper()
         self._go_to_pregrasp()
         # --- State ---
@@ -63,9 +64,9 @@ class PackagingNode(Node) :
 
         # --- Subscription ---
         qos = QoSProfile(
-            reliability=ReliabilityPolicy.RELIABLE,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
             history=HistoryPolicy.KEEP_LAST,
-            depth=10,
+            depth=1,
         )
         self.create_subscription(DigitalIOState, self.digital_state_topic, self._on_digital_state, qos)
 
@@ -203,16 +204,16 @@ class PickAndPlaceExecutorMoveIt2:
             self._logger.error("tool server /niryo_robot_tools_commander/action_server not available !")
         
         # Initialize MoveIt2 Python API (parameters will be passed via launch file)
-        # try:
-        #     self._moveit = MoveItPy(node_name="moveit_py_packaging")
-        #     self._arm = self._moveit.get_planning_component(group_name)
-        #     self._planning_scene_monitor = self._moveit.get_planning_scene_monitor()
+        try:
+            self._moveit = MoveItPy(node_name="moveit_py_packaging")
+            self._arm = self._moveit.get_planning_component(group_name)
+            self._planning_scene_monitor = self._moveit.get_planning_scene_monitor()
             
-        #     self._logger.info("MoveItPy instance created for packaging")
+            self._logger.info("MoveItPy instance created for packaging")
             
-        # except Exception as e:
-        #     self._logger.error(f"Failed to initialize MoveIt2: {e}")
-        #     raise
+        except Exception as e:
+            self._logger.error(f"Failed to initialize MoveIt2: {e}")
+            raise
 
     def plan_and_execute(
         self,
