@@ -84,13 +84,13 @@ class PackagingNode(Node) :
         try:
             package_share_directory = get_package_share_directory('workshop_packaging_manager')
             poses_file_path = os.path.join(package_share_directory, 'config', 'poses.yaml')
-            
+
             with open(poses_file_path, 'r') as file:
                 poses_data = yaml.safe_load(file)
-            
+
             self.get_logger().info(f"Loaded poses: {list(poses_data['poses'].keys())}")
             return poses_data['poses']
-            
+
         except Exception as e:
             self.get_logger().error(f"Failed to load poses.yaml: {e}")
             # Return default poses if file loading fails
