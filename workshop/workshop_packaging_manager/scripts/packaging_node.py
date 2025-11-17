@@ -70,8 +70,8 @@ class PackagingNode(Node) :
         self.get_logger().info("packaging_node started: monitoring sensor, controlling conveyor and robot")
 
     def _on_digital_state(self, msg: DigitalIOState) -> None:
-        # TODO: Implement the digital state method
-        pass
+        self._last_object_detected = not msg._digital_inputs[4]
+        print("digital input callback, object detected : ", self._last_object_detected)
 
     def run_loop(self):
         while rclpy.ok():
@@ -80,8 +80,23 @@ class PackagingNode(Node) :
             pass
 
     def _load_poses(self) -> dict:
-        # TODO: Implement the load poses method
-        pass
+        """Load poses from poses.yaml file"""
+        try:
+            package_share_directory = get_package_share_directory('workshop_packaging_manager')
+            poses_file_path = os.path.join(package_share_directory, 'config', 'poses.yaml')
+            
+            with open(poses_file_path, 'r') as file:
+                poses_data = yaml.safe_load(file)
+            
+            self.get_logger().info(f"Loaded poses: {list(poses_data['poses'].keys())}")
+            return poses_data['poses']
+            
+        except Exception as e:
+            self.get_logger().error(f"Failed to load poses.yaml: {e}")
+            # Return default poses if file loading fails
+            return {
+                'home': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            }
 
 class ConveyorController:
 
